@@ -1,6 +1,7 @@
 customtkinter==5.2.2
 playwright==1.48.0
 pillow==10.4.0
+numpy==2.2.4
 pandas==2.2.3
 psutil==6.0.0
 pyinstaller==6.10.0
