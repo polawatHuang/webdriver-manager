@@ -30,6 +30,11 @@ def get_browsers_dir() -> Path:
     return get_app_base_dir() / "ms-playwright"
 
 
+def get_profile_cache_dir() -> Path:
+    """Stable Chrome profile cache that persists between runs, lives next to the exe."""
+    return get_app_base_dir() / "profile_cache"
+
+
 def resource_path(relative: str) -> Path:
     """Read-only bundled assets (logo, icon, sounds)."""
     base = Path(getattr(sys, "_MEIPASS", get_app_base_dir()))

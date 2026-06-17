@@ -8,3 +8,5 @@ logs/*.log*
 exports/*.csv
 ms-playwright/
 .pytest_cache/
+profile_cache/
+profile_cache_staging/
