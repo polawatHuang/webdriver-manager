@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 import config
 from scraper.browser_manager import (
+    BrowserLaunchError,
     ChromeNotRunningError,
     PlaywrightSession,
     ProfileCopyError,
@@ -60,6 +61,10 @@ class ScrapeWorker:
             logger.exception("Profile copy failed")
             self._log("✗ ไม่สามารถเข้าถึงโปรไฟล์ Chrome ได้", level="error")
             self._emit("error", message=config.PROFILE_COPY_FAILED_MSG)
+        except BrowserLaunchError as exc:
+            logger.error("Browser launch failed: %s", exc)
+            self._log("✗ ไม่สามารถเปิด Chrome ได้", level="error")
+            self._emit("error", message=config.BROWSER_LAUNCH_FAILED_MSG)
         except ExportError:
             logger.exception("CSV export failed")
             self._log("✗ บันทึกไฟล์ CSV ไม่สำเร็จ", level="error")

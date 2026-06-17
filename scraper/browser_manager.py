@@ -28,6 +28,10 @@ class ProfileCopyError(Exception):
     """Could not copy the Chrome profile to a working directory."""
 
 
+class BrowserLaunchError(Exception):
+    """Playwright could not launch a browser (Chrome missing or misconfigured)."""
+
+
 def is_chrome_running() -> bool:
     for proc in psutil.process_iter(["name"]):
         name = (proc.info.get("name") or "").lower()
@@ -113,13 +117,26 @@ class PlaywrightSession:
 
     def __enter__(self) -> Page:
         self._playwright = sync_playwright().start()
-        self._context = self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self.profile_dir),
-            headless=self.headless,
-            viewport={"width": 1280, "height": 1600},
-            args=["--disable-blink-features=AutomationControlled"],
-            locale="th-TH",
-        )
+        launch_args = [
+            "--disable-blink-features=AutomationControlled",
+            # Chrome 136+ blocks remote debugging on default profiles without this flag.
+            "--disable-features=DevToolsDebuggingRestrictions",
+        ]
+        try:
+            # Use the user's installed Google Chrome instead of Playwright's downloaded
+            # Chromium binary — avoids "Executable doesn't exist" when ms-playwright
+            # isn't bundled or is out of sync with the Playwright driver version.
+            self._context = self._playwright.chromium.launch_persistent_context(
+                user_data_dir=str(self.profile_dir),
+                headless=self.headless,
+                channel="chrome",
+                viewport={"width": 1280, "height": 1600},
+                args=launch_args,
+                locale="th-TH",
+            )
+        except Exception as exc:
+            logger.exception("Failed to launch Chrome via Playwright")
+            raise BrowserLaunchError(str(exc)) from exc
         page = self._context.pages[0] if self._context.pages else self._context.new_page()
         return page
 

@@ -44,6 +44,10 @@ PROGRESS_STAGES = [
 ]
 
 CHROME_NOT_RUNNING_MSG = "กรุณาเปิด Google Chrome และ Login Facebook ก่อนใช้งาน"
+BROWSER_LAUNCH_FAILED_MSG = (
+    "ไม่สามารถเปิด Chrome ได้ กรุณาตรวจสอบว่าติดตั้ง Google Chrome แล้ว "
+    "และลองเปิด Chrome ใหม่ก่อนใช้งาน"
+)
 POST_NOT_FOUND_MSG = "ไม่พบหน้าต่าง Facebook Post / กรุณาเปิดโพสต์ที่ต้องการก่อน"
 EXPORT_FAILED_MSG = "ไม่สามารถบันทึกไฟล์ได้ / กรุณาปิดไฟล์ CSV ที่เปิดอยู่"
 PROFILE_COPY_FAILED_MSG = "ไม่สามารถเข้าถึงโปรไฟล์ Chrome ได้ กรุณาลองใหม่"

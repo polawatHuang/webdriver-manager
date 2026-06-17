@@ -21,6 +21,7 @@ No CMD, no Python install, no debugging flags required.
 | กรุณาเปิด Google Chrome และ Login Facebook ก่อนใช้งาน | Chrome isn't running | Open Chrome, log into Facebook, try again |
 | ไม่พบหน้าต่าง Facebook Post / กรุณาเปิดโพสต์ที่ต้องการก่อน | The pasted URL isn't a reachable post, or the Facebook session has expired | Double-check the URL, make sure you're still logged in, try again |
 | ไม่สามารถบันทึกไฟล์ได้ / กรุณาปิดไฟล์ CSV ที่เปิดอยู่ | A previous export CSV is open in Excel, blocking the write | Close the CSV file, click "ดึงข้อมูลอีกครั้ง" |
+| ไม่สามารถเปิด Chrome ได้ | Google Chrome isn't installed, or the bundled Playwright browser is missing/outdated | Install Chrome, open it and log into Facebook, try again. Developers: run `python main.py` from source (uses your installed Chrome). For old builds that still bundle Playwright: run `playwright install` once, or rebuild with the latest source. |
 
 Logs for diagnosing issues are written to a `logs/` folder next to the .exe.
 
@@ -38,8 +39,9 @@ It does **not** read the Facebook tab you already have open — Chrome doesn't e
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium
 ```
+
+The app launches your **installed Google Chrome** via Playwright (`channel="chrome"`), so you do **not** need `playwright install chromium` for local development — only a normal Chrome install.
 
 ### Run from source
 
