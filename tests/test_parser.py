@@ -9,9 +9,19 @@ def test_parses_id_with_full_name():
     assert parse_employee("11212155 สมชาย ใจดี") == ("11212155", "สมชาย ใจดี")
 
 
+def test_parses_id_immediately_followed_by_thai():
+    # "20000777ปิยะวัฒน์" — no space between ID and name (common in real comments)
+    assert parse_employee("20000777ปิยะวัฒน์ วิชัยยา") == ("20000777", "ปิยะวัฒน์ วิชัยยา")
+
+
 def test_skips_comment_without_id():
     assert parse_employee("ร่วมกิจกรรมครับ") is None
     assert parse_employee("โชคดีครับ") is None
+
+
+def test_skips_id_embedded_in_longer_number():
+    # 9-digit sequence must not match any 8-digit substring
+    assert parse_employee("112121551 สมชาย") is None
 
 
 def test_skips_empty_comment():

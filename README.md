@@ -9,7 +9,7 @@ Collect employee data from Facebook Lucky Draw post comments — one pasted URL,
 3. Paste the Facebook post URL into the box.
 4. Click **🚀 เริ่มดึงข้อมูลจาก Facebook**.
 5. Wait for the progress to reach 100%. A CSV is saved automatically to:
-   `Documents\TOA Lucky Draw Exports\facebook_comments_YYYYMMDD_HHMMSS.csv`
+   `Desktop\TOA Lucky Draw Exports\facebook_comments_YYYYMMDD_HHMMSS.csv`
 6. Use **📂 เปิดโฟลเดอร์** / **📄 เปิดไฟล์ CSV** to jump straight to the result, or **🔄 ดึงข้อมูลอีกครั้ง** to run again.
 
 No CMD, no Python install, no debugging flags required.

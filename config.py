@@ -8,12 +8,12 @@ WINDOW_SIZE = "1200x800"
 HEADLESS = True
 
 # Facebook scroll/expand loop tuning (empirically tune against a real large post).
-STALE_ROUNDS_LIMIT = 5
+STALE_ROUNDS_LIMIT = 3
 MAX_TOTAL_ROUNDS = 200
-SCROLL_WAIT_MS = 800
+SCROLL_WAIT_MS = 400
 NAVIGATION_TIMEOUT_MS = 30_000
 
-EMPLOYEE_ID_PATTERN = re.compile(r"\b\d{8}\b")
+EMPLOYEE_ID_PATTERN = re.compile(r"(?<!\d)\d{8}(?!\d)")
 
 EXPORT_FOLDER_NAME = "TOA Lucky Draw Exports"
 CSV_FILENAME_PREFIX = "facebook_comments"

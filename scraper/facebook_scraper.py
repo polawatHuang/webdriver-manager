@@ -72,45 +72,43 @@ class FacebookCommentScraper:
         except ValueError:
             return None
 
-    def _find_view_more_candidates(self):
-        candidates = []
-        clickable = self.page.locator(CLICKABLE_SELECTOR)
-        try:
-            count = clickable.count()
-        except Exception:
-            return candidates
-
-        for i in range(count):
-            el = clickable.nth(i)
-            try:
-                if not el.is_visible():
-                    continue
-                text = el.inner_text(timeout=500).strip()
-            except Exception:
-                continue
-            if not text or len(text) > 60:
-                continue
-            if any(pattern.search(text) for pattern in VIEW_MORE_PATTERNS):
-                candidates.append(el)
-        return candidates
+    # JS patterns mirror VIEW_MORE_PATTERNS — kept in sync manually if patterns change.
+    _JS_FIND_EXPAND_BUTTON = """() => {
+        const patterns = [
+            /view\\s+\\d*\\s*more\\s+comments?/i,
+            /view\\s+\\d*\\s*more\\s+repl(?:y|ies)/i,
+            /^\\d+\\s+repl(?:y|ies)$/i,
+            /\\u0e14\\u0e39\\u0e04\\u0e27\\u0e32\\u0e21\\u0e04\\u0e34\\u0e14\\u0e40\\u0e2b\\u0e47\\u0e19\\u0e40\\u0e1e\\u0e34\\u0e48\\u0e21\\u0e40\\u0e15\\u0e34\\u0e21/,
+            /\\u0e14\\u0e39.*\\u0e04\\u0e27\\u0e32\\u0e21\\u0e04\\u0e34\\u0e14\\u0e40\\u0e2b\\u0e47\\u0e19\\u0e40\\u0e1e\\u0e34\\u0e48\\u0e21\\u0e40\\u0e15\\u0e34\\u0e21/,
+            /\\u0e14\\u0e39\\u0e01\\u0e32\\u0e23\\u0e15\\u0e2d\\u0e1a\\u0e01\\u0e25\\u0e31\\u0e1a/,
+            /^\\d+\\s*\\u0e01\\u0e32\\u0e23\\u0e15\\u0e2d\\u0e1a\\u0e01\\u0e25\\u0e31\\u0e1a/,
+        ];
+        const els = document.querySelectorAll('div[role="button"], span[role="button"]');
+        for (const el of els) {
+            if (!el.offsetParent) continue;
+            const text = (el.innerText || '').trim();
+            if (text && text.length <= 60 && patterns.some(p => p.test(text))) return el;
+        }
+        return null;
+    }"""
 
     def _click_all_visible_expand_buttons(self) -> bool:
+        """Find and click expand buttons via a single JS DOM query per attempt.
+        Uses force=True to bypass Facebook overlays that intercept pointer events."""
         clicked_any = False
-        # Re-query after every click since Facebook's SPA re-renders the DOM and
-        # detaches previously-matched element handles (classic stale-element issue).
         for _ in range(50):
-            candidates = self._find_view_more_candidates()
-            if not candidates:
-                break
-            el = candidates[0]
             try:
-                el.scroll_into_view_if_needed(timeout=2000)
-                el.click(timeout=5000)
+                handle = self.page.evaluate_handle(self._JS_FIND_EXPAND_BUTTON)
+                el = handle.as_element()
+                if el is None:
+                    break
+                el.scroll_into_view_if_needed(timeout=1000)
+                el.click(force=True, timeout=2000)
                 clicked_any = True
-                self.page.wait_for_timeout(300)
+                self.page.wait_for_timeout(150)
             except Exception as exc:
-                logger.debug("Expand-button click failed/stale, re-querying: %s", exc)
-                continue
+                logger.debug("Expand-button click failed: %s", exc)
+                break
         return clicked_any
 
     def expand_all_comments(self) -> None:
@@ -139,11 +137,31 @@ class FacebookCommentScraper:
                 break
 
     def extract_raw_comments(self) -> list[dict]:
-        """Returns a list of {facebook_name, raw_comment, comment_timestamp} dicts."""
+        """Returns a list of {facebook_name, raw_comment, comment_timestamp} dicts.
+        Reads all articles in a single JS evaluate call instead of per-element round-trips."""
+        try:
+            return self.page.evaluate("""() => {
+                const articles = document.querySelectorAll('div[role="article"]');
+                const results = [];
+                for (const article of articles) {
+                    const lines = (article.innerText || '').split('\\n').filter(l => l.trim());
+                    if (!lines.length) continue;
+                    const facebook_name = lines[0].trim();
+                    const raw_comment = lines.slice(1).join('\\n').trim();
+                    const abbr = article.querySelector('a[role="link"] abbr');
+                    const comment_timestamp = abbr ? (abbr.getAttribute('title') || '') : '';
+                    results.push({ facebook_name, raw_comment, comment_timestamp });
+                }
+                return results;
+            }""")
+        except Exception as exc:
+            logger.warning("Batch comment extract failed, falling back: %s", exc)
+            return self._extract_raw_comments_fallback()
+
+    def _extract_raw_comments_fallback(self) -> list[dict]:
         results = []
         articles = self.page.locator(ARTICLE_SELECTOR)
         count = articles.count()
-
         for i in range(count):
             article = articles.nth(i)
             try:
@@ -151,13 +169,11 @@ class FacebookCommentScraper:
             except Exception as exc:
                 logger.debug("Could not read comment #%d: %s", i, exc)
                 continue
-
             lines = [line for line in text.split("\n") if line.strip()]
             if not lines:
                 continue
             facebook_name = lines[0].strip()
             raw_comment = "\n".join(lines[1:]).strip()
-
             timestamp = ""
             try:
                 timestamp = article.locator('a[role="link"] abbr').first.get_attribute(
@@ -165,12 +181,9 @@ class FacebookCommentScraper:
                 ) or ""
             except Exception:
                 pass
-
-            results.append(
-                {
-                    "facebook_name": facebook_name,
-                    "raw_comment": raw_comment,
-                    "comment_timestamp": timestamp,
-                }
-            )
+            results.append({
+                "facebook_name": facebook_name,
+                "raw_comment": raw_comment,
+                "comment_timestamp": timestamp,
+            })
         return results

@@ -22,7 +22,7 @@ def get_logs_dir() -> Path:
 
 
 def get_default_export_dir() -> Path:
-    return Path.home() / "Documents" / "TOA Lucky Draw Exports"
+    return Path.home() / "Desktop" / "TOA Lucky Draw Exports"
 
 
 def get_browsers_dir() -> Path:
