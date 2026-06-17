@@ -73,6 +73,8 @@ class FacebookCommentScraper:
             return None
 
     # JS patterns mirror VIEW_MORE_PATTERNS — kept in sync manually if patterns change.
+    # Uses textContent (not innerText) so we never force a layout reflow while
+    # iterating potentially hundreds of role="button" nodes on a busy Facebook page.
     _JS_FIND_EXPAND_BUTTON = """() => {
         const patterns = [
             /view\\s+\\d*\\s*more\\s+comments?/i,
@@ -86,15 +88,18 @@ class FacebookCommentScraper:
         const els = document.querySelectorAll('div[role="button"], span[role="button"]');
         for (const el of els) {
             if (!el.offsetParent) continue;
-            const text = (el.innerText || '').trim();
+            const text = (el.textContent || '').trim();
             if (text && text.length <= 60 && patterns.some(p => p.test(text))) return el;
         }
         return null;
     }"""
 
+    # Clicks the button entirely in JS to avoid Playwright per-element round-trips
+    # and scroll_into_view timeouts that added 1-3 s per expand attempt.
+    _JS_CLICK_ELEMENT = "(el) => el.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}))"
+
     def _click_all_visible_expand_buttons(self) -> bool:
-        """Find and click expand buttons via a single JS DOM query per attempt.
-        Uses force=True to bypass Facebook overlays that intercept pointer events."""
+        """Find and click expand buttons via a single JS DOM query per attempt."""
         clicked_any = False
         for _ in range(50):
             try:
@@ -102,10 +107,9 @@ class FacebookCommentScraper:
                 el = handle.as_element()
                 if el is None:
                     break
-                el.scroll_into_view_if_needed(timeout=1000)
-                el.click(force=True, timeout=2000)
+                self.page.evaluate(self._JS_CLICK_ELEMENT, el)
                 clicked_any = True
-                self.page.wait_for_timeout(150)
+                self.page.wait_for_timeout(80)
             except Exception as exc:
                 logger.debug("Expand-button click failed: %s", exc)
                 break
@@ -117,7 +121,11 @@ class FacebookCommentScraper:
 
         for round_num in range(MAX_TOTAL_ROUNDS):
             clicked_any = self._click_all_visible_expand_buttons()
-            self.page.mouse.wheel(0, 2000)
+            # Use mouse.wheel (not window.scrollTo) — Facebook renders comments
+            # inside a scrollable container, not the document body, so only
+            # dispatching a real wheel event triggers its IntersectionObserver
+            # lazy-load.  Large delta covers more of the thread per round.
+            self.page.mouse.wheel(0, 8000)
             # Avoid networkidle: Facebook keeps long-lived connections open
             # (chat/presence) so networkidle rarely resolves and would hang.
             self.page.wait_for_timeout(SCROLL_WAIT_MS)

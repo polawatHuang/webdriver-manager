@@ -15,8 +15,20 @@ from config import HEADLESS
 logger = logging.getLogger(__name__)
 
 _IGNORE_PATTERNS = shutil.ignore_patterns(
-    "Singleton*", "lockfile", "*.lock", "Cache", "Code Cache", "GPUCache",
-    "Service Worker", "GrShaderCache", "ShaderCache",
+    # Lock / singleton files that must not be shared
+    "Singleton*", "lockfile", "*.lock",
+    # Caches — safe to omit, browser rebuilds them on demand
+    "Cache", "Cache_Data", "Code Cache", "GPUCache",
+    "GrShaderCache", "ShaderCache",
+    # Heavy on-disk stores not needed for Facebook login
+    "Service Worker", "CacheStorage",
+    "blob_storage", "databases",
+    "VideoDecodeStats", "optimization_guide*",
+    "shared_proto_db", "BudgetDatabase",
+    # Extension state is not needed
+    "Local Extension Settings",
+    # Crash + log artefacts
+    "CrashpadMetrics*", "*.log",
 )
 
 

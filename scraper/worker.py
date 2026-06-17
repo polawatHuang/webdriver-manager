@@ -35,6 +35,7 @@ class ScrapeWorker:
     def __init__(self, post_url: str, event_queue: "queue.Queue[ScrapeEvent]"):
         self.post_url = post_url
         self.event_queue = event_queue
+        self._total_count: int | None = None
 
     def _emit(self, type_: EventType, **payload: Any) -> None:
         self.event_queue.put(ScrapeEvent(type=type_, payload=payload))
@@ -93,6 +94,7 @@ class ScrapeWorker:
 
             total = scraper.get_total_comment_count()
             if total is not None:
+                self._total_count = total
                 self._log(f"✓ พบ {total} ความคิดเห็น", level="success")
                 self._emit("stat", key="total", value=total)
 
@@ -143,6 +145,13 @@ class ScrapeWorker:
 
     def _on_expand_progress(self, comment_count: int) -> None:
         self._log(f"… กำลังโหลดความคิดเห็น ({comment_count} พบแล้ว)", level="info")
+        if self._total_count and self._total_count > 0:
+            pct = 43 + int((min(comment_count, self._total_count) / self._total_count) * 43)
+            label = f"กำลังโหลดความคิดเห็น... ({comment_count}/{self._total_count})"
+        else:
+            pct = 43
+            label = f"กำลังโหลดความคิดเห็น... ({comment_count} พบแล้ว)"
+        self._progress(min(pct, 86), label)
 
 
 def start_worker(post_url: str, event_queue: "queue.Queue[ScrapeEvent]") -> threading.Thread:
